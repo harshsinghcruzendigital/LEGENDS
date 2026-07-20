@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"F:/CLAUDE/LeadGen/docs\")",
+      "Bash(npm -v)",
+      "Bash(npm install *)",
+      "Bash(npm show *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -c /tmp/lg_cookies.txt -X POST http://localhost:3123/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"alex@brightpixel.agency\",\"password\":\"demodemo\",\"demo\":true}' -w \"\\\\nstatus=%{http_code}\\\\n\")",
+      "Bash(curl -s -b /tmp/lg_cookies.txt -o /dev/null -w \"status=%{http_code}\\\\n\" http://localhost:3123/dashboard)",
+      "Bash(curl -s -b /tmp/lg_cookies.txt -o /dev/null -w \"status=%{http_code}\\\\n\" http://localhost:3123/leads)",
+      "Read(//tmp/**)",
+      "Bash(npm ls *)",
+      "Bash(npx prisma *)"
+    ]
+  }
+}

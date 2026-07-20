@@ -1,0 +1,292 @@
+// Prisma schema — Milestone 8. Implements the Lead domain from docs/04-database-schema.md.
+// Staged normalization: core entities (Org, Lead, Contact) are real tables; the heavy
+// read-only audit/score/activity payloads live in Json columns for now and get promoted
+// to their own tables (AuditFinding, LeadScore history, Activity) in a later milestone.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OpportunityType {
+  BROKEN_SITE
+  OUTDATED
+  SLOW
+  NO_SSL
+  NOT_RESPONSIVE
+  BAD_UX
+  SEO
+  NO_ECOMMERCE
+  POOR_BRANDING
+  NO_SOCIAL
+  APP_POOR
+  APP_STALE
+  DIGITAL_TRANSFORM
+}
+
+enum Stage {
+  NEW
+  RESEARCH
+  CONTACTED
+  MEETING
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadStatus {
+  ACTIVE
+  ARCHIVED
+  DUPLICATE
+  DO_NOT_CONTACT
+}
+
+enum WebsiteStatus {
+  ONLINE
+  BROKEN
+  SLOW
+  NO_SSL
+  OFFLINE
+}
+
+enum AppStatus {
+  NONE
+  HEALTHY
+  STALE
+  POOR
+}
+
+enum VerifyStatus {
+  VALID
+  RISKY
+  INVALID
+  UNKNOWN
+}
+
+enum DecisionRole {
+  CEO
+  FOUNDER
+  MARKETING
+  IT
+  SALES
+  OPERATIONS
+  OTHER
+}
+
+model Org {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  leads       Lead[]
+  contacts    Contact[]
+  campaigns   Campaign[]
+  workflows   Workflow[]
+  memberships Membership[]
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MANAGER
+  MEMBER
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  lastLoginAt  DateTime?
+
+  memberships Membership[]
+  sessions    Session[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  orgId     String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum StepChannel {
+  EMAIL
+  LINKEDIN
+}
+
+enum WorkflowStatus {
+  ACTIVE
+  PAUSED
+  DRAFT
+}
+
+model Campaign {
+  id        String         @id
+  orgId     String
+  name      String
+  status    CampaignStatus @default(DRAFT)
+  mailbox   String
+  audience  String
+  stats     Json
+  createdAt DateTime
+  updatedAt DateTime       @default(now()) @updatedAt
+
+  org   Org            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  steps SequenceStep[]
+
+  @@index([orgId, status])
+}
+
+model SequenceStep {
+  id         String      @id
+  campaignId String
+  order      Int
+  channel    StepChannel @default(EMAIL)
+  delayDays  Int         @default(0)
+  subject    String
+  body       String
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
+model Workflow {
+  id          String         @id
+  orgId       String
+  name        String
+  description String
+  status      WorkflowStatus @default(DRAFT)
+  runs        Int            @default(0)
+  successRate Int            @default(0)
+  nodes       Json
+  edges       Json
+  updatedAt   DateTime
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
+}
+
+model Lead {
+  id       String @id
+  orgId    String
+
+  // identity
+  company    String
+  domain     String
+  website    String
+  ownerName  String
+  // classification
+  industry   String
+  category   String
+  opportunityType OpportunityType[]
+  // geo
+  country     String
+  countryCode String
+  state       String
+  city        String
+  // firmographics
+  employees     Int
+  revenueMinor  BigInt
+  currency      String  @default("USD")
+  techStack     String[]
+  cms           String
+  hosting       String
+  domainAgeDays Int
+  trafficBand   String
+  // scores (denormalized latest for fast sort/filter — docs/04 §12)
+  leadScore    Int
+  websiteScore Int
+  uiScore      Int
+  seoScore     Int
+  appScore     Int?
+  scoreFactors Json
+  // status
+  websiteStatus WebsiteStatus
+  appStatus     AppStatus
+  playStoreUrl  String?
+  appStoreUrl   String?
+  stage         Stage      @default(NEW)
+  status        LeadStatus @default(ACTIVE)
+  assignedTo    String?
+  tags          String[]
+  // denormalized for the verified-only filter (avoids a join on the hot path)
+  hasVerifiedEmail Boolean @default(false)
+  // provenance + media
+  source        String
+  screenshotUrl String
+  logoUrl       String
+  // read-only detail payloads (promoted to tables later)
+  websiteAudit Json
+  uiAudit      Json
+  activity     Json
+  notes        Json
+
+  createdAt DateTime
+  updatedAt DateTime
+
+  org      Org       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contacts Contact[]
+
+  @@index([orgId, leadScore])
+  @@index([orgId, websiteScore])
+  @@index([orgId, stage])
+  @@index([orgId, country, industry])
+}
+
+model Contact {
+  id              String       @id
+  orgId           String
+  leadId          String
+  fullName        String
+  title           String
+  role            DecisionRole
+  email           String
+  emailStatus     VerifyStatus
+  emailConfidence Int
+  phone           String?
+  linkedin        String?
+  isPrimary       Boolean      @default(false)
+
+  org  Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, leadId])
+  @@index([orgId, email])
+}

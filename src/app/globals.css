@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — docs/13-design-system.md.
+ * Dark-first, with a fully realized light mode. Components reference semantic
+ * names only (never raw hex). next-themes toggles the `.dark` class on <html>.
+ */
+@layer base {
+  :root {
+    --canvas: 225 24% 5%;
+    --background: 228 22% 7%;
+    --foreground: 210 20% 96%;
+
+    --card: 228 20% 9%;
+    --card-foreground: 210 20% 96%;
+    --popover: 228 24% 8%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 246 89% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 228 14% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 228 12% 14%;
+    --muted-foreground: 220 12% 62%;
+    --accent: 188 85% 53%;
+    --accent-foreground: 228 40% 10%;
+
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 228 40% 10%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 20% 100% / 0.08;
+    --input: 220 16% 20%;
+    --ring: 246 89% 67%;
+
+    --glass-bg: 228 22% 10% / 0.55;
+    --glass-border: 0 0% 100% / 0.08;
+
+    --radius: 0.875rem;
+  }
+
+  /* Radix/shadcn expect solid hsl(var(--border)); keep an alpha-free fallback too */
+  .dark {
+    --canvas: 225 24% 5%;
+    --background: 228 22% 7%;
+    --foreground: 210 20% 96%;
+    --card: 228 20% 9%;
+    --card-foreground: 210 20% 96%;
+    --popover: 228 24% 8%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 246 89% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 228 14% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 228 12% 14%;
+    --muted-foreground: 220 12% 62%;
+    --accent: 188 85% 53%;
+    --accent-foreground: 228 40% 10%;
+    --border: 220 16% 24%;
+    --input: 220 16% 22%;
+    --glass-bg: 228 22% 10% / 0.55;
+    --glass-border: 0 0% 100% / 0.08;
+  }
+
+  .light {
+    --canvas: 222 32% 97%;
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 246 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 16% 94%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 12% 40%;
+    --accent: 188 78% 41%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 38%;
+    --warning: 38 92% 45%;
+    --info: 217 91% 55%;
+    --border: 222 20% 88%;
+    --input: 222 20% 86%;
+    --ring: 246 84% 60%;
+    --glass-bg: 0 0% 100% / 0.65;
+    --glass-border: 222 47% 11% / 0.08;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas text-foreground font-sans;
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+  }
+}
+
+@layer components {
+  /* The signature frosted surface — docs/13 §5 */
+  .glass {
+    background: hsl(var(--glass-bg));
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: var(--tw-shadow, 0 8px 32px rgba(0, 0, 0, 0.24));
+  }
+  .glass-panel {
+    @apply glass rounded-lg shadow-glass;
+  }
+  .light .glass-panel {
+    @apply shadow-glass-light;
+  }
+
+  /* Ambient aurora behind glass — never behind body text */
+  .aurora-bg {
+    position: relative;
+    overflow: hidden;
+  }
+  .aurora-bg::before,
+  .aurora-bg::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(90px);
+    opacity: 0.5;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .aurora-bg::before {
+    width: 40rem;
+    height: 40rem;
+    top: -12rem;
+    left: -8rem;
+    background: radial-gradient(circle at center, hsl(246 89% 67% / 0.6), transparent 60%);
+    animation: aurora 18s ease-in-out infinite;
+  }
+  .aurora-bg::after {
+    width: 34rem;
+    height: 34rem;
+    bottom: -14rem;
+    right: -6rem;
+    background: radial-gradient(circle at center, hsl(188 85% 53% / 0.45), transparent 60%);
+    animation: aurora 22s ease-in-out infinite reverse;
+  }
+
+  .text-gradient {
+    background: linear-gradient(120deg, hsl(var(--foreground)), hsl(var(--primary)) 60%, hsl(var(--accent)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* React Flow (Automation builder) theming */
+.react-flow__edge-text {
+  fill: hsl(var(--foreground));
+  font-size: 10px;
+}
+.react-flow__edge-textbg {
+  fill: hsl(var(--card));
+}
+.react-flow__controls-button svg {
+  fill: hsl(var(--foreground));
+}
+.react-flow__attribution {
+  display: none;
+}
+
+/* Refined scrollbars */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.25);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
