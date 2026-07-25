@@ -346,3 +346,20 @@ VERIFIED live: stage ld_0001→WON persists across refetch; note persists; activ
 "Moved to Won" + "Note added". Edits are now durable — the app both reads AND writes real data.
 
 ## The app is a real, working, multi-tenant SaaS on Postgres: signup → discover → audit-scored leads → CRM → campaigns → automation, all persistent & isolated.
+
+---
+
+# Milestone 14 — Real Website Scanner ✅ LIVE (real data)
+
+> First real data source. Deployed to prod + verified on real URLs.
+
+- [x] src/server/services/website-audit.ts — real fetch(): SSL, security headers, SEO tags, mobile viewport,
+      tech fingerprint, TTFB, page weight → real scores + findings. Optional PageSpeed via PAGESPEED_API_KEY.
+- [x] src/server/repositories/scanner.repo.ts — buildLeadFromAudit + scan() upserts lead by domain in org
+- [x] src/server/routers/scanner.ts — scan mutation; registered in root
+- [x] src/features/scanner/scanner-view.tsx + /scanner page + nav item (ScanSearch) + middleware guard
+- [x] deployed (git 0c7447b + vercel --prod)
+
+VERIFIED live: stripe.com → SSL✓, security 100, overall 96; example.com → real findings NO_META/NO_SCHEMA/
+NO_HSTS/NO_TRACKING/NO_FORM. Paste any real URL → real audit → saved lead. This is genuine data, no scraping
+of third parties (audits the URL the user provides).

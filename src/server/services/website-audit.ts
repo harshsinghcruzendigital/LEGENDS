@@ -34,6 +34,7 @@ export interface AuditResult {
   techStack: string[];
   cms: string;
   hosting: string;
+  domainAgeDays: number;
   seoScore: number;
   securityScore: number;
   perfScore: number;
@@ -134,16 +135,37 @@ async function tryPageSpeed(url: string): Promise<{ perf: number; a11y: number }
   }
 }
 
+/** Real domain registration age via RDAP (free, keyless registry protocol). */
+async function domainAge(domain: string): Promise<number> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch(`https://rdap.org/domain/${domain}`, {
+      signal: ctrl.signal,
+      headers: { Accept: "application/rdap+json" },
+    });
+    clearTimeout(t);
+    if (!res.ok) return 0;
+    const data = (await res.json()) as { events?: { eventAction?: string; eventDate?: string }[] };
+    const reg = (data.events ?? []).find((e) => e.eventAction === "registration");
+    if (!reg?.eventDate) return 0;
+    return Math.max(0, Math.round((Date.now() - Date.parse(reg.eventDate)) / 86_400_000));
+  } catch {
+    return 0;
+  }
+}
+
 export async function auditWebsite(input: string): Promise<AuditResult> {
   const url = normalizeUrl(input);
   const domain = url ? canonicalDomain(url) : canonicalDomain(input);
+  const rdapPromise = domain ? domainAge(domain) : Promise.resolve(0); // runs concurrently with the fetch
   const base: AuditResult = {
     inputUrl: input, finalUrl: url ?? input, domain, reachable: false, statusCode: 0, sslValid: false,
     ttfbMs: 0, pageWeightKb: 0, title: "", hasTitle: false, hasMetaDesc: false, hasViewport: false,
     hasLang: false, hasCanonical: false, hasOg: false, hasSchema: false, h1Count: 0, hasContactForm: false,
     hasAnalytics: false, hasPixel: false, hasLiveChat: false,
     securityHeaders: { hsts: false, csp: false, xfo: false, xcto: false, referrer: false },
-    techStack: [], cms: "Unknown", hosting: "Unknown",
+    techStack: [], cms: "Unknown", hosting: "Unknown", domainAgeDays: 0,
     seoScore: 0, securityScore: 0, perfScore: 0, mobileScore: 0, accessibilityScore: 0, overallScore: 0,
     perfSource: "measured", findings: [],
   };
@@ -247,6 +269,8 @@ export async function auditWebsite(input: string): Promise<AuditResult> {
   if (!sec.hsts) add("NO_HSTS", "No HSTS header", "Missing Strict-Transport-Security — a basic security hardening gap.", "LOW", "security");
   if (!base.hasAnalytics && !base.hasPixel) add("NO_TRACKING", "No analytics or pixel", "No analytics/marketing pixel found — attribution and retargeting are impossible.", "LOW", "seo");
   if (!base.hasContactForm) add("NO_FORM", "No contact form detected", "No form found on the homepage — a conversion/lead-capture gap.", "LOW", "content");
+
+  base.domainAgeDays = await rdapPromise;
 
   return base;
 }

@@ -69,7 +69,7 @@ export function buildLeadFromAudit(a: AuditResult, id: string): Lead {
     techStack: a.techStack,
     cms: a.cms,
     hosting: a.hosting,
-    domainAgeDays: 0,
+    domainAgeDays: a.domainAgeDays,
     trafficBand: "Unknown",
     leadScore,
     websiteScore: a.overallScore,
