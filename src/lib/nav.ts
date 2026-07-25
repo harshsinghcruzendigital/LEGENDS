@@ -12,6 +12,7 @@ import {
   Workflow,
   Sparkles,
   Settings,
+  ScanSearch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +27,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Lead Discovery", href: "/discovery", icon: Radar },
+  { label: "Website Scanner", href: "/scanner", icon: ScanSearch },
   { label: "Lead Database", href: "/leads", icon: Database },
   { label: "Campaigns", href: "/campaigns", icon: Send },
   { label: "CRM", href: "/crm", icon: KanbanSquare },

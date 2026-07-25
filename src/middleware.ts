@@ -11,6 +11,7 @@ const PUBLIC_PATHS = ["/login", "/signup", "/forgot"];
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/discovery",
+  "/scanner",
   "/leads",
   "/campaigns",
   "/crm",
@@ -47,6 +48,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/discovery/:path*",
+    "/scanner/:path*",
     "/leads/:path*",
     "/campaigns/:path*",
     "/crm/:path*",

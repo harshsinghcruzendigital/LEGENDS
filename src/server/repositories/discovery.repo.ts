@@ -52,7 +52,7 @@ function estimateCount(c: DiscoveryRunInput): number {
   return Math.min(c.limit, Math.max(6, Math.round(breadth * 1.4)));
 }
 
-function leadCreateData(orgId: string, l: Lead): Prisma.LeadUncheckedCreateInput {
+export function leadCreateData(orgId: string, l: Lead): Prisma.LeadUncheckedCreateInput {
   return {
     id: l.id,
     orgId,
