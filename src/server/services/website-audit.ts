@@ -139,7 +139,7 @@ async function tryPageSpeed(url: string): Promise<{ perf: number; a11y: number }
 async function domainAge(domain: string): Promise<number> {
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 4000);
+    const t = setTimeout(() => ctrl.abort(), 7000);
     const res = await fetch(`https://rdap.org/domain/${domain}`, {
       signal: ctrl.signal,
       headers: { Accept: "application/rdap+json" },
