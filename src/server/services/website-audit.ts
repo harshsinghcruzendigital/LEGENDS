@@ -142,7 +142,11 @@ async function domainAge(domain: string): Promise<number> {
     const t = setTimeout(() => ctrl.abort(), 7000);
     const res = await fetch(`https://rdap.org/domain/${domain}`, {
       signal: ctrl.signal,
-      headers: { Accept: "application/rdap+json" },
+      headers: {
+        Accept: "application/rdap+json",
+        // rdap.org 403s requests without a UA (Node fetch sends none by default)
+        "User-Agent": "LeadGenEngineBot/1.0 (+https://legends-coral.vercel.app/bot)",
+      },
     });
     clearTimeout(t);
     if (!res.ok) return 0;

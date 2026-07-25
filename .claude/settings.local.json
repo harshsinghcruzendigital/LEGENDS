@@ -42,7 +42,10 @@
       "Bash(curl -s -c /tmp/m.txt -X POST __TRACKED_VAR__/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"alex@brightpixel.agency\",\"password\":\"demodemo\"}' -o /dev/null -w 'login=%{http_code}\\\\n')",
       "Bash(curl -s -b /tmp/m.txt -X POST __TRACKED_VAR__/api/trpc/scanner.scan?batch=1 -H 'Content-Type: application/json' -d '{\"0\":{\"json\":{\"url\":\"github.com\"}}}')",
       "Bash(curl -s -L -m 10 -w \"\\\\n[http=%{http_code} time=%{time_total}s]\\\\n\" -H \"Accept: application/rdap+json\" \"https://rdap.org/domain/github.com\")",
-      "Bash(git commit -q -m 'Bump RDAP timeout 4s→7s for Vercel cold-start latency *)"
+      "Bash(git commit -q -m 'Bump RDAP timeout 4s→7s for Vercel cold-start latency *)",
+      "Bash(curl -s -c /tmp/m2.txt -X POST __TRACKED_VAR__/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"alex@brightpixel.agency\",\"password\":\"demodemo\"}' -o /dev/null -w 'login=%{http_code}\\\\n')",
+      "Bash(curl -s -b /tmp/m2.txt -X POST __TRACKED_VAR__/api/trpc/scanner.scan?batch=1 -H 'Content-Type: application/json' -d '{\"0\":{\"json\":{\"url\":\"github.com\"}}}')",
+      "Bash(git commit -q -m 'Fix RDAP: send User-Agent \\(rdap.org 403s no-UA requests\\) *)"
     ]
   }
 }
