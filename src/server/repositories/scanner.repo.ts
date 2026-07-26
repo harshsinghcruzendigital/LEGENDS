@@ -5,10 +5,10 @@
  */
 import { Prisma } from "@prisma/client";
 import { hasDatabase, getPrisma } from "@/server/db";
-import { auditWebsite, type AuditResult } from "@/server/services/website-audit";
+import { auditWebsite, runPageSpeed, type AuditResult } from "@/server/services/website-audit";
 import { leadCreateData } from "@/server/repositories/discovery.repo";
 import { leadsRepository } from "@/server/repositories/leads.repo";
-import type { Lead, OpportunityType, WebsiteStatus, ScoreFactor } from "@/lib/types";
+import type { Lead, OpportunityType, WebsiteStatus, ScoreFactor, WebsiteAudit } from "@/lib/types";
 
 function companyFromDomain(domain: string): string {
   const root = domain.split(".")[0];
@@ -166,5 +166,28 @@ export const scannerRepository = {
     await prisma.lead.create({ data: leadCreateData(orgId, built) });
     const lead = (await leadsRepository.byId(orgId, id))!;
     return { lead, audit, isNew: true };
+  },
+
+  /** Background: run real Google Lighthouse (slow) and update the lead's performance. */
+  async enrichPerformance(orgId: string, leadId: string): Promise<{ perfScore: number; accessibilityScore: number; overallScore: number } | null> {
+    if (!hasDatabase) return null;
+    const prisma = getPrisma();
+    const lead = await prisma.lead.findFirst({ where: { id: leadId, orgId }, select: { website: true, websiteAudit: true } });
+    if (!lead) return null;
+
+    const ps = await runPageSpeed(lead.website);
+    if (!ps) return null;
+
+    const audit = lead.websiteAudit as unknown as WebsiteAudit;
+    const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+    const mobileScore = audit.mobileFriendly ? 92 : 28;
+    const overall = clamp(ps.perf * 0.3 + (audit.seoScore ?? 0) * 0.25 + (audit.securityScore ?? 0) * 0.25 + mobileScore * 0.2);
+    const updated: WebsiteAudit = { ...audit, perfScore: ps.perf, accessibilityScore: ps.a11y, overallScore: overall };
+
+    await prisma.lead.update({
+      where: { id: leadId },
+      data: { websiteScore: overall, websiteAudit: updated as unknown as Prisma.InputJsonValue, updatedAt: new Date() },
+    });
+    return { perfScore: ps.perf, accessibilityScore: ps.a11y, overallScore: overall };
   },
 };

@@ -363,3 +363,16 @@ VERIFIED live: stage ld_0001→WON persists across refetch; note persists; activ
 VERIFIED live: stripe.com → SSL✓, security 100, overall 96; example.com → real findings NO_META/NO_SCHEMA/
 NO_HSTS/NO_TRACKING/NO_FORM. Paste any real URL → real audit → saved lead. This is genuine data, no scraping
 of third parties (audits the URL the user provides).
+
+---
+
+# Milestone 15 — Bulk scanning + real domain age ✅ LIVE
+
+> Deployed + verified on prod. More real, keyless data.
+
+- [x] website-audit.ts — RDAP domain age (real registry data, keyless); FIX: send User-Agent (rdap.org 403s no-UA) + 7s timeout for Vercel cold start
+- [x] scanner-view.tsx — bulk mode: paste many URLs → sequential client scans → live per-URL progress, score rings, findings, summary tiles (scanned / avg score / issues); each opens LeadDetail
+- [x] deployed (git 509d692 + vercel --prod)
+
+VERIFIED live: cloudflare.com → domainAgeDays 6366 (real, reg 2009); bulk multi-URL scanning with live progress.
+Real data now: SSL, security headers, SEO, mobile, TTFB/perf, tech, findings, AND domain age — all keyless.

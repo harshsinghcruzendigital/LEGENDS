@@ -13,4 +13,9 @@ export const scannerRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Scan failed" });
       }
     }),
+
+  /** Background enrichment — real Google Lighthouse performance (slow). */
+  enrichPerformance: protectedProcedure
+    .input(z.object({ leadId: z.string() }))
+    .mutation(({ ctx, input }) => scannerRepository.enrichPerformance(ctx.orgId, input.leadId)),
 });

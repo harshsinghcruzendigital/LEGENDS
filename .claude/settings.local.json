@@ -45,7 +45,13 @@
       "Bash(git commit -q -m 'Bump RDAP timeout 4s→7s for Vercel cold-start latency *)",
       "Bash(curl -s -c /tmp/m2.txt -X POST __TRACKED_VAR__/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"alex@brightpixel.agency\",\"password\":\"demodemo\"}' -o /dev/null -w 'login=%{http_code}\\\\n')",
       "Bash(curl -s -b /tmp/m2.txt -X POST __TRACKED_VAR__/api/trpc/scanner.scan?batch=1 -H 'Content-Type: application/json' -d '{\"0\":{\"json\":{\"url\":\"github.com\"}}}')",
-      "Bash(git commit -q -m 'Fix RDAP: send User-Agent \\(rdap.org 403s no-UA requests\\) *)"
+      "Bash(git commit -q -m 'Fix RDAP: send User-Agent \\(rdap.org 403s no-UA requests\\) *)",
+      "Bash(curl -s -c /tmp/m3.txt -X POST __TRACKED_VAR__/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"alex@brightpixel.agency\",\"password\":\"demodemo\"}' -o /dev/null -w 'login=%{http_code}\\\\n')",
+      "Bash(curl -s -b /tmp/m3.txt -X POST __TRACKED_VAR__/api/trpc/scanner.scan?batch=1 -H 'Content-Type: application/json' -d '{\"0\":{\"json\":{\"url\":\"github.com\"}}}')",
+      "Bash(curl -s -c /tmp/m4.txt -X POST __TRACKED_VAR__/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"alex@brightpixel.agency\",\"password\":\"demodemo\"}' -o /dev/null -w 'login=%{http_code}\\\\n')",
+      "Bash(curl -s -b /tmp/m4.txt -X POST __TRACKED_VAR__/api/trpc/scanner.scan?batch=1 -H 'Content-Type: application/json' -d '{\"0\":{\"json\":{\"url\":\"cloudflare.com\"}}}')",
+      "Bash(curl -s -m 45 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance&category=accessibility&url=https://example.com&key=AIzaSyC1ottxw0WkmpsRP32swgqM0nTepq9GBWo')",
+      "Bash(git commit -q -m 'Real Google Lighthouse via background PageSpeed enrichment *)"
     ]
   }
 }

@@ -16,7 +16,7 @@ import type { Lead } from "@/lib/types";
 import type { AuditResult } from "@/server/services/website-audit";
 
 type ScanResult = { lead: Lead; audit: AuditResult; isNew: boolean };
-type Job = { url: string; status: "pending" | "running" | "done" | "error"; result?: ScanResult; error?: string };
+type Job = { url: string; status: "pending" | "running" | "done" | "error"; result?: ScanResult; error?: string; enriching?: boolean; lighthouse?: boolean };
 
 const MAX_URLS = 25;
 
@@ -39,6 +39,7 @@ export function ScannerView() {
   const router = useRouter();
   const utils = trpc.useUtils();
   const scan = trpc.scanner.scan.useMutation();
+  const enrich = trpc.scanner.enrichPerformance.useMutation();
   const [input, setInput] = React.useState("");
   const [jobs, setJobs] = React.useState<Job[]>([]);
   const [running, setRunning] = React.useState(false);
@@ -61,6 +62,7 @@ export function ScannerView() {
         const result = await scan.mutateAsync({ url: urls[i] });
         setJobs((prev) => prev.map((j, idx) => (idx === i ? { ...j, status: "done", result } : j)));
         ok++;
+        enrichJob(i, result.lead.id); // fire real Lighthouse in the background
       } catch (e) {
         setJobs((prev) => prev.map((j, idx) => (idx === i ? { ...j, status: "error", error: e instanceof Error ? e.message : "failed" } : j)));
         fail++;
@@ -75,6 +77,31 @@ export function ScannerView() {
   function openLead(lead: Lead) {
     setSelected(lead);
     setDetailOpen(true);
+  }
+
+  function enrichJob(i: number, leadId: string) {
+    setJobs((prev) => prev.map((j, idx) => (idx === i ? { ...j, enriching: true } : j)));
+    enrich
+      .mutateAsync({ leadId })
+      .then((scores) => {
+        setJobs((prev) =>
+          prev.map((j, idx) => {
+            if (idx !== i || !j.result) return j;
+            if (!scores) return { ...j, enriching: false };
+            return {
+              ...j,
+              enriching: false,
+              lighthouse: true,
+              result: {
+                ...j.result,
+                audit: { ...j.result.audit, perfScore: scores.perfScore, accessibilityScore: scores.accessibilityScore, overallScore: scores.overallScore },
+              },
+            };
+          }),
+        );
+        utils.leads.list.invalidate();
+      })
+      .catch(() => setJobs((prev) => prev.map((j, idx) => (idx === i ? { ...j, enriching: false } : j))));
   }
 
   const done = jobs.filter((j) => j.status === "done" && j.result);
@@ -152,7 +179,13 @@ export function ScannerView() {
                       <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> {job.result.audit.securityScore}</span>
                         <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> SEO {job.result.audit.seoScore}</span>
-                        <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> {job.result.audit.ttfbMs}ms</span>
+                        {job.enriching ? (
+                          <span className="flex items-center gap-1 text-primary"><Loader2 className="h-3 w-3 animate-spin" /> Lighthouse…</span>
+                        ) : job.lighthouse ? (
+                          <span className="flex items-center gap-1 text-primary"><Zap className="h-3 w-3" /> Perf {job.result.audit.perfScore} · Lighthouse</span>
+                        ) : (
+                          <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> {job.result.audit.ttfbMs}ms</span>
+                        )}
                         <span className="flex items-center gap-1"><Smartphone className="h-3 w-3" /> {job.result.audit.hasViewport ? "mobile" : "not mobile"}</span>
                         {job.result.audit.findings.length > 0 && <SeverityBadge severity={job.result.audit.findings[0].severity} />}
                         <span>· {job.result.audit.findings.length} issues</span>

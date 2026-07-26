@@ -116,17 +116,22 @@ function detectTech(html: string, headers: Headers): { tech: string[]; cms: stri
   return { tech: [...tech], cms, hosting };
 }
 
-async function tryPageSpeed(url: string): Promise<{ perf: number; a11y: number } | null> {
+/**
+ * Real Google Lighthouse scores via PageSpeed Insights. Slow (~20s), so it runs
+ * OUT of the fast scan path — called from a background enrichment mutation.
+ * Returns null when no key is configured (graceful: scan keeps measured scores).
+ */
+export async function runPageSpeed(url: string, timeoutMs = 45000): Promise<{ perf: number; a11y: number } | null> {
   const key = process.env.PAGESPEED_API_KEY;
-  if (!key) return null; // opt-in only, keeps the function fast by default
+  if (!key) return null;
   try {
     const api = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance&category=accessibility&url=${encodeURIComponent(url)}&key=${key}`;
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 9000);
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
     const res = await fetch(api, { signal: ctrl.signal });
     clearTimeout(t);
     if (!res.ok) return null;
-    const data = await res.json();
+    const data = (await res.json()) as { lighthouseResult?: { categories?: { performance?: { score?: number }; accessibility?: { score?: number } } } };
     const cats = data?.lighthouseResult?.categories;
     if (!cats) return null;
     return { perf: Math.round((cats.performance?.score ?? 0) * 100), a11y: Math.round((cats.accessibility?.score ?? 0) * 100) };
@@ -250,13 +255,8 @@ export async function auditWebsite(input: string): Promise<AuditResult> {
   base.perfScore = clamp(perf);
   base.accessibilityScore = clamp((base.hasLang ? 40 : 0) + (base.hasViewport ? 30 : 0) + (base.hasTitle ? 15 : 0) + (base.h1Count > 0 ? 15 : 0));
 
-  const ps = await tryPageSpeed(base.finalUrl);
-  if (ps) {
-    base.perfScore = ps.perf;
-    base.accessibilityScore = ps.a11y;
-    base.perfSource = "pagespeed";
-  }
-
+  // Performance from measured TTFB/page weight here; real Lighthouse fills in via
+  // the background enrichment mutation (PageSpeed is too slow for the scan path).
   base.overallScore = clamp(base.perfScore * 0.3 + base.seoScore * 0.25 + base.securityScore * 0.25 + base.mobileScore * 0.2);
 
   // ── findings ──
