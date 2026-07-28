@@ -18,4 +18,26 @@ export const scannerRouter = router({
   enrichPerformance: protectedProcedure
     .input(z.object({ leadId: z.string() }))
     .mutation(({ ctx, input }) => scannerRepository.enrichPerformance(ctx.orgId, input.leadId)),
+
+  // TEMP diagnostic — remove after debugging PageSpeed
+  psDebug: protectedProcedure.input(z.object({ url: z.string() })).mutation(async ({ input }) => {
+    const key = process.env.PAGESPEED_API_KEY;
+    if (!key) return { keyPresent: false } as const;
+    const api = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance&url=${encodeURIComponent(input.url)}&key=${key}`;
+    try {
+      const res = await fetch(api);
+      const text = await res.text();
+      let hasLR = false, hasCats = false, perf: number | null = null, errMsg: string | null = null;
+      try {
+        const d = JSON.parse(text);
+        hasLR = !!d.lighthouseResult;
+        hasCats = !!d?.lighthouseResult?.categories;
+        perf = d?.lighthouseResult?.categories?.performance?.score ?? null;
+        errMsg = d?.error?.message ?? null;
+      } catch { /* ignore */ }
+      return { keyPresent: true, keyLen: key.length, status: res.status, hasLR, hasCats, perf, errMsg, bodyStart: text.slice(0, 140) };
+    } catch (e) {
+      return { keyPresent: true, keyLen: key.length, fetchError: e instanceof Error ? e.message : "err" };
+    }
+  }),
 });

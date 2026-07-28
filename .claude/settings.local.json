@@ -51,7 +51,10 @@
       "Bash(curl -s -c /tmp/m4.txt -X POST __TRACKED_VAR__/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"alex@brightpixel.agency\",\"password\":\"demodemo\"}' -o /dev/null -w 'login=%{http_code}\\\\n')",
       "Bash(curl -s -b /tmp/m4.txt -X POST __TRACKED_VAR__/api/trpc/scanner.scan?batch=1 -H 'Content-Type: application/json' -d '{\"0\":{\"json\":{\"url\":\"cloudflare.com\"}}}')",
       "Bash(curl -s -m 45 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance&category=accessibility&url=https://example.com&key=AIzaSyC1ottxw0WkmpsRP32swgqM0nTepq9GBWo')",
-      "Bash(git commit -q -m 'Real Google Lighthouse via background PageSpeed enrichment *)"
+      "Bash(git commit -q -m 'Real Google Lighthouse via background PageSpeed enrichment *)",
+      "Bash(npx --yes vercel env pull /tmp/venv.txt --environment=production --yes)",
+      "Bash(rm -f /tmp/venv.txt)",
+      "Bash(git commit *)"
     ]
   }
 }
