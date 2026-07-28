@@ -54,7 +54,9 @@
       "Bash(git commit -q -m 'Real Google Lighthouse via background PageSpeed enrichment *)",
       "Bash(npx --yes vercel env pull /tmp/venv.txt --environment=production --yes)",
       "Bash(rm -f /tmp/venv.txt)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(curl -s -c /tmp/dbg.txt -X POST __TRACKED_VAR__/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"alex@brightpixel.agency\",\"password\":\"demodemo\"}' -o /dev/null)",
+      "Bash(curl -s -b /tmp/dbg.txt -X POST __TRACKED_VAR__/api/trpc/scanner.psDebug?batch=1 -H 'Content-Type: application/json' -d '{\"0\":{\"json\":{\"url\":\"https://example.com\"}}}')"
     ]
   }
 }
