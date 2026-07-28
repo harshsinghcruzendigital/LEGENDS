@@ -169,7 +169,7 @@ export const scannerRepository = {
   },
 
   /** Background: run real Google Lighthouse (slow) and update the lead's performance. */
-  async enrichPerformance(orgId: string, leadId: string): Promise<{ perfScore: number; accessibilityScore: number; overallScore: number } | null> {
+  async enrichPerformance(orgId: string, leadId: string): Promise<{ perfScore: number; overallScore: number } | null> {
     if (!hasDatabase) return null;
     const prisma = getPrisma();
     const lead = await prisma.lead.findFirst({ where: { id: leadId, orgId }, select: { website: true, websiteAudit: true } });
@@ -182,12 +182,12 @@ export const scannerRepository = {
     const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
     const mobileScore = audit.mobileFriendly ? 92 : 28;
     const overall = clamp(ps.perf * 0.3 + (audit.seoScore ?? 0) * 0.25 + (audit.securityScore ?? 0) * 0.25 + mobileScore * 0.2);
-    const updated: WebsiteAudit = { ...audit, perfScore: ps.perf, accessibilityScore: ps.a11y, overallScore: overall };
+    const updated: WebsiteAudit = { ...audit, perfScore: ps.perf, overallScore: overall };
 
     await prisma.lead.update({
       where: { id: leadId },
       data: { websiteScore: overall, websiteAudit: updated as unknown as Prisma.InputJsonValue, updatedAt: new Date() },
     });
-    return { perfScore: ps.perf, accessibilityScore: ps.a11y, overallScore: overall };
+    return { perfScore: ps.perf, overallScore: overall };
   },
 };

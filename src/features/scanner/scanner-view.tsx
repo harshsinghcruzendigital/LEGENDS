@@ -94,7 +94,7 @@ export function ScannerView() {
               lighthouse: true,
               result: {
                 ...j.result,
-                audit: { ...j.result.audit, perfScore: scores.perfScore, accessibilityScore: scores.accessibilityScore, overallScore: scores.overallScore },
+                audit: { ...j.result.audit, perfScore: scores.perfScore, overallScore: scores.overallScore },
               },
             };
           }),

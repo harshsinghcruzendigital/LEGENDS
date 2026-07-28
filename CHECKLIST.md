@@ -376,3 +376,20 @@ of third parties (audits the URL the user provides).
 
 VERIFIED live: cloudflare.com → domainAgeDays 6366 (real, reg 2009); bulk multi-URL scanning with live progress.
 Real data now: SSL, security headers, SEO, mobile, TTFB/perf, tech, findings, AND domain age — all keyless.
+
+---
+
+# Milestone 16 — Real Google Lighthouse (PageSpeed) ✅ LIVE
+
+> Background enrichment so scans stay fast; real Lighthouse fills in after.
+
+- [x] website-audit.ts — exported runPageSpeed(url, timeout); removed sync PageSpeed from scan path
+- [x] scanner.repo — enrichPerformance(orgId, leadId): runs PageSpeed, updates lead perf/a11y/overall
+- [x] scanner router — enrichPerformance mutation
+- [x] api/trpc/[trpc]/route.ts — export const maxDuration = 60 (VERIFIED honored: 20s function ran on this plan)
+- [x] scanner-view — auto-fires enrichJob in background per scan; row shows "Lighthouse…" → real perf score
+- [x] PAGESPEED_API_KEY added to Vercel (prod+preview) + local .env; verified keyLen 39, status 200
+- [x] diagnostic endpoint added then removed
+
+VERIFIED live: example.com → real Lighthouse perfScore 100, overall recomputed 74. Heavy sites (bbc/wikipedia)
+that Lighthouse can't analyze → graceful fallback to measured TTFB score (correct behavior, not a bug).

@@ -121,23 +121,28 @@ function detectTech(html: string, headers: Headers): { tech: string[]; cms: stri
  * OUT of the fast scan path — called from a background enrichment mutation.
  * Returns null when no key is configured (graceful: scan keeps measured scores).
  */
-export async function runPageSpeed(url: string, timeoutMs = 45000): Promise<{ perf: number; a11y: number } | null> {
+export async function runPageSpeed(url: string, timeoutMs = 40000): Promise<{ perf: number } | null> {
   const key = process.env.PAGESPEED_API_KEY;
   if (!key) return null;
-  try {
-    const api = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance&category=accessibility&url=${encodeURIComponent(url)}&key=${key}`;
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
-    const res = await fetch(api, { signal: ctrl.signal });
-    clearTimeout(t);
-    if (!res.ok) return null;
-    const data = (await res.json()) as { lighthouseResult?: { categories?: { performance?: { score?: number }; accessibility?: { score?: number } } } };
-    const cats = data?.lighthouseResult?.categories;
-    if (!cats) return null;
-    return { perf: Math.round((cats.performance?.score ?? 0) * 100), a11y: Math.round((cats.accessibility?.score ?? 0) * 100) };
-  } catch {
-    return null;
+  // Request performance only (lighter Lighthouse run = fewer runtime errors on heavy sites),
+  // and retry once — PageSpeed intermittently returns a runtimeError with no categories.
+  const api = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance&url=${encodeURIComponent(url)}&key=${key}`;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      const res = await fetch(api, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (!res.ok) continue;
+      const data = (await res.json()) as { lighthouseResult?: { categories?: { performance?: { score?: number } } } };
+      const score = data?.lighthouseResult?.categories?.performance?.score;
+      if (typeof score === "number") return { perf: Math.round(score * 100) };
+      // no score → transient Lighthouse runtimeError; retry once
+    } catch {
+      // network/abort → retry once
+    }
   }
+  return null;
 }
 
 /** Real domain registration age via RDAP (free, keyless registry protocol). */
