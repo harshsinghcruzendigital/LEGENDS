@@ -128,6 +128,16 @@ export interface LeadGenConstraints {
   idPrefix?: string;
 }
 
+const REAL_ONLINE_DOMAINS = [
+  "google.com", "github.com", "microsoft.com", "apple.com", "wikipedia.org",
+  "stripe.com", "vercel.com", "cloudflare.com", "netlify.com", "aws.amazon.com",
+  "npm.im", "react.dev", "nextjs.org", "tailwindcss.com", "shadcn.com",
+  "mozilla.org", "w3.org", "digitalocean.com", "heroku.com", "git-scm.com",
+  "stackoverflow.com", "medium.com", "dev.to", "hashnode.com", "unsplash.com",
+  "figma.com", "canva.com", "adobe.com", "dropbox.com", "zoom.us",
+  "slack.com", "trello.com", "asana.com", "notion.so", "spotify.com"
+];
+
 function generateLeads(count: number, seed = 20260718, constraints?: LeadGenConstraints): Lead[] {
   const rng = mulberry32(seed);
   const leads: Lead[] = [];
@@ -139,7 +149,7 @@ function generateLeads(count: number, seed = 20260718, constraints?: LeadGenCons
     const company = `${prefix} ${suffix}`;
     const base = slugify(company);
     const tld = pick(rng, [".com", ".com", ".co", ".io", ".shop", ".net"]);
-    const domain = `${base}${tld}`;
+    let domain = `${base}${tld}`;
 
     const cityPool = constraints?.countries?.length ? CITIES.filter((c) => constraints.countries!.includes(c.country)) : CITIES;
     const loc = pick(rng, cityPool.length ? cityPool : CITIES);
@@ -164,6 +174,10 @@ function generateLeads(count: number, seed = 20260718, constraints?: LeadGenCons
       : opps.includes("NO_SSL")
         ? "SSL_ERROR"
         : "ONLINE";
+
+    if (websiteStatus === "ONLINE") {
+      domain = REAL_ONLINE_DOMAINS[(i + seed) % REAL_ONLINE_DOMAINS.length];
+    }
 
     const hasApp = opps.includes("APP_POOR") || opps.includes("APP_STALE") || rng() > 0.7;
     const appStatus: AppStatus = !hasApp
@@ -207,7 +221,6 @@ function generateLeads(count: number, seed = 20260718, constraints?: LeadGenCons
     const findings = buildFindings(rng, opps);
     const overallScore = Math.round((websiteScore + uiScore + seoScore) / 3);
 
-    const seed = 100000 + i;
     leads.push({
       id: `${constraints?.idPrefix ?? "ld_"}${String(i + 1).padStart(4, "0")}`,
       company,
