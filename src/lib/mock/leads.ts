@@ -160,14 +160,10 @@ function generateLeads(count: number, seed = 20260718, constraints?: LeadGenCons
     const seoScore = Math.max(10, websiteScore + randInt(rng, -18, 14));
 
     const websiteStatus: WebsiteStatus = opps.includes("BROKEN_SITE")
-      ? "BROKEN"
+      ? (rng() > 0.6 ? "OFFLINE" : rng() > 0.5 ? "DNS_ERROR" : rng() > 0.5 ? "TIMEOUT" : "REDIRECT_ERROR")
       : opps.includes("NO_SSL")
-        ? "NO_SSL"
-        : opps.includes("SLOW")
-          ? "SLOW"
-          : rng() > 0.96
-            ? "OFFLINE"
-            : "ONLINE";
+        ? "SSL_ERROR"
+        : "ONLINE";
 
     const hasApp = opps.includes("APP_POOR") || opps.includes("APP_STALE") || rng() > 0.7;
     const appStatus: AppStatus = !hasApp
@@ -252,12 +248,12 @@ function generateLeads(count: number, seed = 20260718, constraints?: LeadGenCons
       logoUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(company)}&backgroundType=gradientLinear`,
       contacts,
       websiteAudit: {
-        sslValid: websiteStatus !== "NO_SSL",
+        sslValid: websiteStatus !== "SSL_ERROR",
         perfScore: websiteScore,
         lcpMs: randInt(rng, 1800, 7200),
         clsScore: Math.round(rng() * 40) / 100,
         seoScore,
-        securityScore: websiteStatus === "NO_SSL" ? randInt(rng, 10, 35) : randInt(rng, 45, 92),
+        securityScore: websiteStatus === "SSL_ERROR" ? randInt(rng, 10, 35) : randInt(rng, 45, 92),
         accessibilityScore: randInt(rng, 40, 92),
         overallScore,
         mobileFriendly: !opps.includes("NOT_RESPONSIVE"),

@@ -18,6 +18,12 @@ function companyFromDomain(domain: string): string {
 
 function opportunitiesFrom(a: AuditResult): OpportunityType[] {
   const set = new Set<OpportunityType>();
+  if (a.websiteStatus !== "ONLINE") {
+    set.add("BROKEN_SITE");
+    if (a.websiteStatus === "SSL_ERROR") {
+      set.add("NO_SSL");
+    }
+  }
   for (const f of a.findings) {
     if (f.code === "NO_SSL") set.add("NO_SSL");
     else if (f.code === "NO_VIEWPORT") set.add("NOT_RESPONSIVE");
@@ -30,10 +36,7 @@ function opportunitiesFrom(a: AuditResult): OpportunityType[] {
 }
 
 function websiteStatusFrom(a: AuditResult): WebsiteStatus {
-  if (!a.reachable || a.statusCode >= 400) return "BROKEN";
-  if (!a.sslValid) return "NO_SSL";
-  if (a.perfScore < 40) return "SLOW";
-  return "ONLINE";
+  return a.websiteStatus;
 }
 
 /** Build a full frontend Lead from a real audit. */

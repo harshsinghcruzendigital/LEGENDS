@@ -15,7 +15,7 @@ function spark(n = 12): number[] {
 
 const total = LEADS.length;
 const qualified = LEADS.filter((l) => l.leadScore >= 70).length;
-const broken = LEADS.filter((l) => l.websiteStatus === "BROKEN" || l.websiteStatus === "NO_SSL").length;
+const broken = LEADS.filter((l) => l.websiteStatus !== "ONLINE").length;
 const poorUi = LEADS.filter((l) => l.uiScore <= 40).length;
 const appOpps = LEADS.filter((l) => l.appStatus === "POOR" || l.appStatus === "STALE").length;
 const emailsVerified = LEADS.reduce((s, l) => s + l.contacts.filter((c) => c.emailStatus === "VALID").length, 0);

@@ -74,7 +74,7 @@ async function computeFromDb(orgId: string) {
   const total = leads.length;
   const today = leads.filter((l) => l.createdAt >= startOfToday).length;
   const qualified = leads.filter((l) => l.leadScore >= 70).length;
-  const broken = leads.filter((l) => l.websiteStatus === "BROKEN" || l.websiteStatus === "NO_SSL").length;
+  const broken = leads.filter((l) => l.websiteStatus !== "ONLINE").length;
   const poorUi = leads.filter((l) => l.uiScore <= 40).length;
   const appOpps = leads.filter((l) => l.appStatus === "POOR" || l.appStatus === "STALE").length;
   const countries = new Set(leads.map((l) => l.country)).size;

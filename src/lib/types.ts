@@ -33,7 +33,7 @@ export type LeadStatus = "ACTIVE" | "ARCHIVED" | "DUPLICATE" | "DO_NOT_CONTACT";
 export type VerifyStatus = "VALID" | "RISKY" | "INVALID" | "UNKNOWN";
 export type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 export type DecisionRole = "CEO" | "FOUNDER" | "MARKETING" | "IT" | "SALES" | "OPERATIONS" | "OTHER";
-export type WebsiteStatus = "ONLINE" | "BROKEN" | "SLOW" | "NO_SSL" | "OFFLINE";
+export type WebsiteStatus = "ONLINE" | "OFFLINE" | "DNS_ERROR" | "SSL_ERROR" | "REDIRECT_ERROR" | "TIMEOUT";
 export type AppStatus = "NONE" | "HEALTHY" | "STALE" | "POOR";
 
 export interface Contact {

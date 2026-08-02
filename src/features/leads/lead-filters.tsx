@@ -25,7 +25,7 @@ export { EMPTY_FILTERS };
 export type { LeadFilterState };
 
 const STAGE_OPTS = ["NEW", "RESEARCH", "CONTACTED", "MEETING", "PROPOSAL", "NEGOTIATION", "WON", "LOST"];
-const STATUS_OPTS = ["ONLINE", "SLOW", "NO_SSL", "BROKEN", "OFFLINE"];
+const STATUS_OPTS = ["ONLINE", "OFFLINE", "DNS_ERROR", "SSL_ERROR", "REDIRECT_ERROR", "TIMEOUT"];
 const SCORE_PRESETS: { key: LeadFilterState["scorePreset"]; label: string }[] = [
   { key: "all", label: "All scores" },
   { key: "80", label: "Qualified · 80+" },
@@ -173,7 +173,21 @@ function FacetFilter({
 }
 
 function title(s: string): string {
-  const map: Record<string, string> = { revenueMinor: "Revenue", createdAt: "Created", assignedTo: "Assigned", websiteScore: "Website Score", leadScore: "Lead Score", websiteStatus: "Website", opportunityType: "Opportunity" };
+  const map: Record<string, string> = {
+    revenueMinor: "Revenue",
+    createdAt: "Created",
+    assignedTo: "Assigned",
+    websiteScore: "Website Score",
+    leadScore: "Lead Score",
+    websiteStatus: "Website",
+    opportunityType: "Opportunity",
+    DNS_ERROR: "DNS Error",
+    SSL_ERROR: "SSL Error",
+    REDIRECT_ERROR: "Redirect Error",
+    TIMEOUT: "Timeout",
+    OFFLINE: "Offline",
+    ONLINE: "Online"
+  };
   if (map[s]) return map[s];
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replace(/_/g, " ");
 }

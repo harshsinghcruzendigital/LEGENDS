@@ -7,6 +7,7 @@ import { crmRouter } from "@/server/routers/crm";
 import { workflowsRouter } from "@/server/routers/workflows";
 import { discoveryRouter } from "@/server/routers/discovery";
 import { scannerRouter } from "@/server/routers/scanner";
+import { savedViewsRouter } from "@/server/routers/saved-views";
 
 export const appRouter = router({
   leads: leadsRouter,
@@ -16,6 +17,7 @@ export const appRouter = router({
   workflows: workflowsRouter,
   discovery: discoveryRouter,
   scanner: scannerRouter,
+  savedViews: savedViewsRouter,
 });
 
 export type AppRouter = typeof appRouter;

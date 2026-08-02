@@ -53,19 +53,24 @@ export function VerifyBadge({ status, className }: { status: VerifyStatus; class
   );
 }
 
-const WEBSITE_MAP: Record<WebsiteStatus, { variant: "success" | "warning" | "destructive"; icon: typeof CheckCircle2; label: string }> = {
+const WEBSITE_MAP: Record<
+  WebsiteStatus,
+  { variant: "success" | "warning" | "destructive" | "muted" | "info" | "secondary" | "accent"; icon: typeof CheckCircle2; label: string; className?: string }
+> = {
   ONLINE: { variant: "success", icon: CheckCircle2, label: "Online" },
-  SLOW: { variant: "warning", icon: Clock, label: "Slow" },
-  NO_SSL: { variant: "destructive", icon: ShieldX, label: "No SSL" },
-  BROKEN: { variant: "destructive", icon: XCircle, label: "Broken" },
   OFFLINE: { variant: "destructive", icon: XCircle, label: "Offline" },
+  DNS_ERROR: { variant: "warning", icon: AlertTriangle, label: "DNS Error", className: "border-transparent bg-orange-500/15 text-orange-600 dark:text-orange-400" },
+  SSL_ERROR: { variant: "warning", icon: ShieldAlert, label: "SSL Error", className: "border-transparent bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" },
+  REDIRECT_ERROR: { variant: "destructive", icon: AlertTriangle, label: "Redirect Error" },
+  TIMEOUT: { variant: "muted", icon: Clock, label: "Timeout" },
 };
 
 export function WebsiteStatusBadge({ status, className }: { status: WebsiteStatus; className?: string }) {
   const m = WEBSITE_MAP[status];
+  if (!m) return null;
   const Icon = m.icon;
   return (
-    <Badge variant={m.variant} className={className}>
+    <Badge variant={m.variant} className={cn(m.className, className)}>
       <Icon className="h-3 w-3" />
       {m.label}
     </Badge>

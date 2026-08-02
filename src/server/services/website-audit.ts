@@ -6,13 +6,15 @@
  * is set. This is the first REAL data source — no scraping of third parties, just
  * auditing the URL the user provides.
  */
-import type { AuditFinding, Severity } from "@/lib/types";
+import type { AuditFinding, Severity, WebsiteStatus } from "@/lib/types";
+import dns from "dns/promises";
 
 export interface AuditResult {
   inputUrl: string;
   finalUrl: string;
   domain: string;
   reachable: boolean;
+  websiteStatus: WebsiteStatus;
   statusCode: number;
   sslValid: boolean;
   ttfbMs: number;
@@ -174,7 +176,7 @@ export async function auditWebsite(input: string): Promise<AuditResult> {
   const domain = url ? canonicalDomain(url) : canonicalDomain(input);
   const rdapPromise = domain ? domainAge(domain) : Promise.resolve(0); // runs concurrently with the fetch
   const base: AuditResult = {
-    inputUrl: input, finalUrl: url ?? input, domain, reachable: false, statusCode: 0, sslValid: false,
+    inputUrl: input, finalUrl: url ?? input, domain, reachable: false, websiteStatus: "ONLINE", statusCode: 0, sslValid: false,
     ttfbMs: 0, pageWeightKb: 0, title: "", hasTitle: false, hasMetaDesc: false, hasViewport: false,
     hasLang: false, hasCanonical: false, hasOg: false, hasSchema: false, h1Count: 0, hasContactForm: false,
     hasAnalytics: false, hasPixel: false, hasLiveChat: false,
@@ -185,35 +187,144 @@ export async function auditWebsite(input: string): Promise<AuditResult> {
   };
 
   if (!url) {
-    return { ...base, error: "Invalid or unsupported URL." };
+    return { ...base, websiteStatus: "OFFLINE", overallScore: 0 };
+  }
+
+  // 1. DNS Lookup Verification
+  let dnsResolved = false;
+  try {
+    await dns.lookup(domain);
+    dnsResolved = true;
+  } catch {
+    dnsResolved = false;
+  }
+
+  if (!dnsResolved) {
+    base.websiteStatus = "DNS_ERROR";
+    base.overallScore = 5;
+    base.findings.push({
+      code: "DNS_ERROR",
+      title: "DNS Resolution Failed",
+      detail: `DNS lookup failed for domain "${domain}". The domain does not resolve to an IP address (NXDOMAIN).`,
+      severity: "CRITICAL",
+      category: "security",
+    });
+    base.domainAgeDays = await rdapPromise;
+    return base;
   }
 
   const started = Date.now();
-  let res: Response;
+  let res: Response | null = null;
   let html = "";
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
-    res = await fetch(url, {
-      redirect: "follow",
-      signal: ctrl.signal,
-      headers: { "User-Agent": "LeadGenEngineBot/1.0 (+https://legends-coral.vercel.app/bot; website audit)" },
-    });
-    const ttfb = Date.now() - started;
-    const text = await res.text();
-    clearTimeout(t);
-    html = text.slice(0, 600_000);
-    base.reachable = true;
-    base.statusCode = res.status;
-    base.finalUrl = res.url || url;
-    base.sslValid = base.finalUrl.startsWith("https://");
-    base.ttfbMs = ttfb;
-    base.pageWeightKb = Math.round(new Blob([text]).size / 1024);
-  } catch (e) {
-    return { ...base, error: e instanceof Error && e.name === "AbortError" ? "Site timed out (>8s)." : "Site unreachable." };
+  let reachable = false;
+  let sslValid = false;
+  let ttfb = 0;
+  let pageWeightKb = 0;
+  let status: WebsiteStatus = "ONLINE";
+  let fetchError = "";
+
+  async function performFetch(targetUrl: string): Promise<{ success: boolean; errorType?: WebsiteStatus; errorMsg?: string }> {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
+      const fetchRes = await fetch(targetUrl, {
+        redirect: "follow",
+        signal: ctrl.signal,
+        headers: { "User-Agent": "LeadGenEngineBot/1.0 (+https://legends-coral.vercel.app/bot; website audit)" },
+      });
+      ttfb = Date.now() - started;
+      const text = await fetchRes.text();
+      clearTimeout(t);
+      html = text.slice(0, 600_000);
+      pageWeightKb = Math.round(new Blob([text]).size / 1024);
+      res = fetchRes;
+      sslValid = fetchRes.url ? fetchRes.url.startsWith("https://") : targetUrl.startsWith("https://");
+      
+      if (fetchRes.status < 200 || fetchRes.status >= 400) {
+        return { success: false, errorType: "OFFLINE", errorMsg: `HTTP Server returned error status ${fetchRes.status}.` };
+      }
+      return { success: true };
+    } catch (e: any) {
+      const errMsg = String(e.message || e || "");
+      const errCode = String(e.code || "");
+      const causeMsg = String(e.cause?.message || e.cause || "");
+      const causeCode = String(e.cause?.code || "");
+      
+      const isTimeout = e.name === "AbortError" || errMsg.toLowerCase().includes("timeout") || causeMsg.toLowerCase().includes("timeout");
+      const isSsl = errMsg.includes("SSL") || errMsg.includes("TLS") || errMsg.includes("certificate") || errCode.includes("TLS") || errCode.includes("ERR_TLS") || causeMsg.includes("certificate") || causeCode.includes("ERR_TLS") || causeCode.includes("EPROTO");
+      const isRedirect = errMsg.toLowerCase().includes("redirect") || causeMsg.toLowerCase().includes("redirect") || errMsg.toLowerCase().includes("max redirects");
+      
+      if (isTimeout) {
+        return { success: false, errorType: "TIMEOUT", errorMsg: "Connection timed out (>8s)." };
+      } else if (isSsl) {
+        return { success: false, errorType: "SSL_ERROR", errorMsg: "SSL certificate validation failed." };
+      } else if (isRedirect) {
+        return { success: false, errorType: "REDIRECT_ERROR", errorMsg: "Broken redirect loop." };
+      } else {
+        return { success: false, errorType: "OFFLINE", errorMsg: errMsg || "Server connection failed." };
+      }
+    }
   }
 
-  const headers = res.headers;
+  let fetchResult = await performFetch(url);
+
+  if (!fetchResult.success) {
+    if (fetchResult.errorType === "SSL_ERROR" && url.startsWith("https://")) {
+      const httpUrl = url.replace(/^https:\/\//i, "http://");
+      const fallbackResult = await performFetch(httpUrl);
+      if (fallbackResult.success) {
+        status = "SSL_ERROR";
+        reachable = true;
+      } else {
+        status = "SSL_ERROR";
+        reachable = false;
+        fetchError = fetchResult.errorMsg || "SSL handshake failed.";
+      }
+    } else {
+      status = fetchResult.errorType || "OFFLINE";
+      reachable = false;
+      fetchError = fetchResult.errorMsg || "Site unreachable.";
+    }
+  } else {
+    status = "ONLINE";
+    reachable = true;
+  }
+
+  if (!reachable) {
+    base.websiteStatus = status;
+    base.reachable = false;
+    base.domainAgeDays = await rdapPromise;
+    
+    if (status === "TIMEOUT") {
+      base.overallScore = 10;
+    } else if (status === "REDIRECT_ERROR") {
+      base.overallScore = 12;
+    } else if (status === "SSL_ERROR") {
+      base.overallScore = 20;
+    } else {
+      base.overallScore = 8;
+    }
+    
+    base.findings.push({
+      code: status === "TIMEOUT" ? "TIMEOUT" : status === "SSL_ERROR" ? "SSL_ERROR" : status === "REDIRECT_ERROR" ? "REDIRECT_ERROR" : "OFFLINE",
+      title: status === "TIMEOUT" ? "Connection Timeout" : status === "SSL_ERROR" ? "SSL Certificate Error" : status === "REDIRECT_ERROR" ? "Broken Redirects" : "Website Offline",
+      detail: fetchError || "The site could not be accessed by the system.",
+      severity: "CRITICAL",
+      category: "security",
+    });
+    
+    return base;
+  }
+
+  // Reachable site! Populate standard attributes
+  base.reachable = true;
+  base.statusCode = res!.status;
+  base.finalUrl = res!.url || url;
+  base.sslValid = sslValid;
+  base.ttfbMs = ttfb;
+  base.pageWeightKb = pageWeightKb;
+
+  const headers = res!.headers;
   const has = (re: RegExp) => re.test(html);
   base.title = (/<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1] || "").trim().slice(0, 200);
   base.hasTitle = base.title.length > 0;
@@ -253,8 +364,8 @@ export async function auditWebsite(input: string): Promise<AuditResult> {
     (base.hasSchema ? 12 : 0) + (base.hasOg ? 10 : 0) + (base.hasLang ? 10 : 0),
   );
   base.mobileScore = base.hasViewport ? 92 : 28;
-  const ttfb = base.ttfbMs;
-  let perf = ttfb < 300 ? 92 : ttfb < 700 ? 80 : ttfb < 1200 ? 66 : ttfb < 2500 ? 48 : ttfb < 5000 ? 30 : 15;
+  const checkTtfb = base.ttfbMs;
+  let perf = checkTtfb < 300 ? 92 : checkTtfb < 700 ? 80 : checkTtfb < 1200 ? 66 : checkTtfb < 2500 ? 48 : checkTtfb < 5000 ? 30 : 15;
   if (base.pageWeightKb > 3000) perf -= 20;
   else if (base.pageWeightKb > 1500) perf -= 10;
   base.perfScore = clamp(perf);
@@ -263,6 +374,19 @@ export async function auditWebsite(input: string): Promise<AuditResult> {
   // Performance from measured TTFB/page weight here; real Lighthouse fills in via
   // the background enrichment mutation (PageSpeed is too slow for the scan path).
   base.overallScore = clamp(base.perfScore * 0.3 + base.seoScore * 0.25 + base.securityScore * 0.25 + base.mobileScore * 0.2);
+
+  // Apply reachability scoring clamps
+  base.websiteStatus = status;
+  if (status === "SSL_ERROR") {
+    base.overallScore = Math.max(20, Math.min(50, base.overallScore));
+  } else if (status === "ONLINE") {
+    const isSlow = base.perfScore < 50 || base.ttfbMs > 1200;
+    if (isSlow) {
+      base.overallScore = Math.max(40, Math.min(70, base.overallScore));
+    } else {
+      base.overallScore = Math.max(80, Math.min(100, base.overallScore));
+    }
+  }
 
   // ── findings ──
   const add = (code: string, title: string, detail: string, severity: Severity, category: AuditFinding["category"]) =>

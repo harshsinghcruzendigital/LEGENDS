@@ -124,6 +124,12 @@ export function LeadDetail({
                     href={lead.website}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={(e) => {
+                      if (lead.websiteStatus !== "ONLINE") {
+                        e.preventDefault();
+                        toast.error("Website is currently unreachable (DNS / SSL / Timeout).");
+                      }
+                    }}
                     className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
                   >
                     <Globe className="h-3.5 w-3.5" /> {lead.domain}
@@ -146,6 +152,9 @@ export function LeadDetail({
                       </DropdownMenuContent>
                     </DropdownMenu>
                     <WebsiteStatusBadge status={lead.websiteStatus} />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      Verified {new Date(lead.updatedAt).toLocaleDateString()} at {new Date(lead.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                     {lead.appStatus !== "NONE" && <AppStatusBadge status={lead.appStatus} />}
                   </div>
                 </div>

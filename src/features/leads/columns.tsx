@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Image from "next/image";
+import { toast } from "sonner";
 import { MoreHorizontal, ExternalLink, Eye, UserPlus, Send, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -190,8 +191,17 @@ export function buildColumns(onOpen: (lead: Lead) => void): ColumnDef<Lead>[] {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onOpen(l)}><Eye /> View details</DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a href={l.website} target="_blank" rel="noreferrer"><ExternalLink /> Visit website</a>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (l.websiteStatus !== "ONLINE") {
+                    toast.error("Website is currently unreachable (DNS / SSL / Timeout).");
+                  } else {
+                    window.open(l.website, "_blank", "noreferrer");
+                  }
+                }}
+              >
+                <ExternalLink /> Visit website
               </DropdownMenuItem>
               <DropdownMenuItem><UserPlus /> Assign</DropdownMenuItem>
               <DropdownMenuItem><Send /> Add to sequence</DropdownMenuItem>
