@@ -11,6 +11,7 @@ export interface LeadFilterState {
   stages: string[];
   websiteStatuses: string[];
   industries: string[];
+  countries: string[];
   scorePreset: "all" | "80" | "60" | "low";
   verifiedOnly: boolean;
 }
@@ -20,6 +21,7 @@ export const EMPTY_FILTERS: LeadFilterState = {
   stages: [],
   websiteStatuses: [],
   industries: [],
+  countries: [],
   scorePreset: "all",
   verifiedOnly: false,
 };
@@ -49,7 +51,7 @@ export interface LeadListResult {
   total: number;
   page: number;
   pageCount: number;
-  facets: { industries: string[] };
+  facets: { industries: string[]; countries: string[] };
 }
 
 export function applyLeadFilters(rows: Lead[], f: LeadFilterState): Lead[] {
@@ -59,6 +61,7 @@ export function applyLeadFilters(rows: Lead[], f: LeadFilterState): Lead[] {
     if (f.stages.length && !f.stages.includes(l.stage)) return false;
     if (f.websiteStatuses.length && !f.websiteStatuses.includes(l.websiteStatus)) return false;
     if (f.industries.length && !f.industries.includes(l.industry)) return false;
+    if (f.countries && f.countries.length && !f.countries.includes(l.country)) return false;
     if (f.scorePreset === "80" && l.leadScore < 80) return false;
     if (f.scorePreset === "60" && l.leadScore < 60) return false;
     if (f.scorePreset === "low" && l.leadScore >= 40) return false;
@@ -90,6 +93,9 @@ export function queryLeads(all: Lead[], input: LeadListInput): LeadListResult {
     total: filtered.length,
     page,
     pageCount,
-    facets: { industries: Array.from(new Set(all.map((l) => l.industry))).sort() },
+    facets: {
+      industries: Array.from(new Set(all.map((l) => l.industry))).sort(),
+      countries: Array.from(new Set(all.map((l) => l.country))).sort(),
+    },
   };
 }

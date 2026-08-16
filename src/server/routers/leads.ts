@@ -9,6 +9,7 @@ const filterSchema = z.object({
   stages: z.array(z.string()).default([]),
   websiteStatuses: z.array(z.string()).default([]),
   industries: z.array(z.string()).default([]),
+  countries: z.array(z.string()).default([]),
   scorePreset: z.enum(["all", "80", "60", "low"]).default("all"),
   verifiedOnly: z.boolean().default(false),
 });

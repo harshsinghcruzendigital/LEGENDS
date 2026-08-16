@@ -157,7 +157,12 @@ function generateLeads(count: number, seed = 20260718, constraints?: LeadGenCons
     const ownerLast = pick(rng, LAST_NAMES);
 
     // opportunity mix — 1..3 problems
-    let opps = sample(rng, OPPORTUNITY_TYPES, randInt(rng, 1, 3));
+    const allowedOpps = OPPORTUNITY_TYPES.filter((o) => {
+      if (o === "BROKEN_SITE" && !constraints?.opportunities?.includes("BROKEN_SITE")) return false;
+      if (o === "NO_SSL" && !constraints?.opportunities?.includes("NO_SSL")) return false;
+      return true;
+    });
+    let opps = sample(rng, allowedOpps, randInt(rng, 1, Math.min(3, allowedOpps.length)));
     if (constraints?.opportunities?.length) {
       const forced = pick(rng, constraints.opportunities);
       if (!opps.includes(forced)) opps = [forced, ...opps].slice(0, 3);
@@ -174,10 +179,6 @@ function generateLeads(count: number, seed = 20260718, constraints?: LeadGenCons
       : opps.includes("NO_SSL")
         ? "SSL_ERROR"
         : "ONLINE";
-
-    if (websiteStatus === "ONLINE") {
-      domain = REAL_ONLINE_DOMAINS[(i + seed) % REAL_ONLINE_DOMAINS.length];
-    }
 
     const hasApp = opps.includes("APP_POOR") || opps.includes("APP_STALE") || rng() > 0.7;
     const appStatus: AppStatus = !hasApp

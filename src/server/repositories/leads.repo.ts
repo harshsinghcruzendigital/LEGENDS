@@ -31,6 +31,7 @@ function buildWhere(orgId: string, f: LeadFilterState): Prisma.LeadWhereInput {
   if (f.stages.length) where.stage = { in: f.stages as Prisma.EnumStageFilter["in"] };
   if (f.websiteStatuses.length) where.websiteStatus = { in: f.websiteStatuses as Prisma.EnumWebsiteStatusFilter["in"] };
   if (f.industries.length) where.industry = { in: f.industries };
+  if (f.countries && f.countries.length) where.country = { in: f.countries };
   if (f.scorePreset === "80") where.leadScore = { gte: 80 };
   else if (f.scorePreset === "60") where.leadScore = { gte: 60 };
   else if (f.scorePreset === "low") where.leadScore = { lt: 40 };
@@ -50,7 +51,7 @@ export const leadsRepository = {
     const pageCount = Math.max(1, Math.ceil(total / limit));
     const page = Math.min(Math.max(0, input.page), pageCount - 1);
 
-    const [rows, industryRows] = await Promise.all([
+    const [rows, industryRows, countryRows] = await Promise.all([
       prisma.lead.findMany({
         where,
         orderBy: { [input.sort.field]: input.sort.dir } as Prisma.LeadOrderByWithRelationInput,
@@ -59,6 +60,7 @@ export const leadsRepository = {
         include: { contacts: true },
       }),
       prisma.lead.findMany({ where: { orgId }, distinct: ["industry"], select: { industry: true } }),
+      prisma.lead.findMany({ where: { orgId }, distinct: ["country"], select: { country: true } }),
     ]);
 
     return {
@@ -66,7 +68,10 @@ export const leadsRepository = {
       total,
       page,
       pageCount,
-      facets: { industries: industryRows.map((r) => r.industry).sort() },
+      facets: {
+        industries: industryRows.map((r) => r.industry).sort(),
+        countries: countryRows.map((r) => r.country).sort(),
+      },
     };
   },
 

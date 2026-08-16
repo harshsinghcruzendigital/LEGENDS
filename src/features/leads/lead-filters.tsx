@@ -37,6 +37,7 @@ export function LeadFilters({
   filters,
   setFilters,
   industries,
+  countries,
   table,
   total,
   filtered,
@@ -44,6 +45,7 @@ export function LeadFilters({
   filters: LeadFilterState;
   setFilters: React.Dispatch<React.SetStateAction<LeadFilterState>>;
   industries: string[];
+  countries: string[];
   table: Table<Lead>;
   total: number;
   filtered: number;
@@ -52,6 +54,7 @@ export function LeadFilters({
     filters.stages.length +
     filters.websiteStatuses.length +
     filters.industries.length +
+    (filters.countries?.length || 0) +
     (filters.scorePreset !== "all" ? 1 : 0) +
     (filters.verifiedOnly ? 1 : 0);
 
@@ -72,6 +75,7 @@ export function LeadFilters({
         <FacetFilter label="Stage" options={STAGE_OPTS.map((s) => ({ value: s, label: title(s) }))} selected={filters.stages} onChange={(v) => setFilters((f) => ({ ...f, stages: v }))} />
         <FacetFilter label="Website" options={STATUS_OPTS.map((s) => ({ value: s, label: title(s) }))} selected={filters.websiteStatuses} onChange={(v) => setFilters((f) => ({ ...f, websiteStatuses: v }))} />
         <FacetFilter label="Industry" options={industries.map((s) => ({ value: s, label: s }))} selected={filters.industries} onChange={(v) => setFilters((f) => ({ ...f, industries: v }))} />
+        <FacetFilter label="Country" options={countries.map((s) => ({ value: s, label: s }))} selected={filters.countries || []} onChange={(v) => setFilters((f) => ({ ...f, countries: v }))} />
 
         {/* Score preset */}
         <Popover>

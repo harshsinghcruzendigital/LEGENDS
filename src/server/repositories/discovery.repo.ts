@@ -7,6 +7,7 @@
 import { Prisma } from "@prisma/client";
 import { hasDatabase, getPrisma } from "@/server/db";
 import { discoverLeads } from "@/lib/mock/leads";
+import { searchMarketplaceLeads } from "@/server/services/marketplace";
 import type { Lead, OpportunityType } from "@/lib/types";
 
 export interface DiscoveryRunInput {
@@ -120,19 +121,36 @@ export function leadCreateData(orgId: string, l: Lead): Prisma.LeadUncheckedCrea
 export const discoveryRepository = {
   async run(orgId: string, config: DiscoveryRunInput): Promise<DiscoveryRunResult> {
     const seed = seedFromConfig(config);
-    const count = estimateCount(config);
-    let generated = discoverLeads(count, seed, {
-      industries: config.industries,
-      countries: config.countries,
-      opportunities: config.opportunities,
-      sources: config.sources,
-    });
+    const count = Math.max(20, config.limit);
+    
+    const hasMarketplace = config.sources.some(s => ["amazon", "etsy", "flipkart"].includes(s.toLowerCase()));
+    let generated: Lead[] = [];
+    
+    if (hasMarketplace) {
+      generated = await searchMarketplaceLeads(config.keywords || "default", config.sources, config.countries, count);
+    }
+    
+    if (generated.length === 0) {
+      generated = discoverLeads(count, seed, {
+        industries: config.industries,
+        countries: config.countries,
+        opportunities: config.opportunities,
+        sources: config.sources,
+      });
+    }
+
     if (config.minScore > 0) generated = generated.filter((l) => l.leadScore >= config.minScore);
     generated.sort((a, b) => b.leadScore - a.leadScore);
 
-    // stamp unique ids so repeat runs never collide on the PK
+    // stamp unique ids so repeat runs never collide on the PK, and set current creation time
     const stamp = Date.now().toString(36);
-    generated = generated.map((l, i) => ({ ...l, id: `dq_${stamp}_${i}` }));
+    const nowStr = new Date().toISOString();
+    generated = generated.map((l, i) => ({
+      ...l,
+      id: `dq_${stamp}_${i}`,
+      createdAt: nowStr,
+      updatedAt: nowStr
+    }));
 
     if (!hasDatabase) {
       return { leads: generated, count: generated.length, qualified: generated.filter((l) => l.leadScore >= 70).length, duplicates: 0 };
@@ -150,9 +168,9 @@ export const discoveryRepository = {
     await prisma.$transaction(fresh.map((l) => prisma.lead.create({ data: leadCreateData(orgId, l) })));
 
     return {
-      leads: fresh,
+      leads: generated,
       count: fresh.length,
-      qualified: fresh.filter((l) => l.leadScore >= 70).length,
+      qualified: generated.filter((l) => l.leadScore >= 70).length,
       duplicates: generated.length - fresh.length,
     };
   },

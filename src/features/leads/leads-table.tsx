@@ -245,6 +245,7 @@ export function LeadsTable() {
   const total = listQuery.data?.total ?? 0;
   const pageCount = listQuery.data?.pageCount ?? 1;
   const industries = listQuery.data?.facets.industries ?? [];
+  const countries = listQuery.data?.facets.countries ?? [];
 
   // Reset to first page when the query shape changes.
   React.useEffect(() => setPage(0), [filters, sort]);
@@ -320,6 +321,7 @@ export function LeadsTable() {
         filters={filters}
         setFilters={setFilters}
         industries={industries}
+        countries={countries}
         table={table}
         total={LEADS.length}
         filtered={total}

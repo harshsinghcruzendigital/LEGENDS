@@ -10,7 +10,14 @@ import { leadCreateData } from "@/server/repositories/discovery.repo";
 import { leadsRepository } from "@/server/repositories/leads.repo";
 import type { Lead, OpportunityType, WebsiteStatus, ScoreFactor, WebsiteAudit } from "@/lib/types";
 
-function companyFromDomain(domain: string): string {
+function companyFromDomain(domain: string, title?: string): string {
+  if (title && title.trim().length > 1) {
+    // Remove common slogan suffixes: "Stripe: Financial Infrastructure", "Linear – Issue Tracking", "Vercel | Frontend Cloud"
+    const cleaned = title.split(/[|\-–:•—]/)[0].trim();
+    if (cleaned.length >= 2 && cleaned.length <= 40 && !cleaned.toLowerCase().includes("http")) {
+      return cleaned;
+    }
+  }
   const root = domain.split(".")[0];
   const name = root.split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   return name || domain;
@@ -53,9 +60,11 @@ export function buildLeadFromAudit(a: AuditResult, id: string): Lead {
   ];
   const leadScore = Math.round(factors.reduce((s, f) => s + f.value * f.weight, 0) / factors.reduce((s, f) => s + f.weight, 0));
 
+  const compName = companyFromDomain(a.domain, a.title);
+
   return {
     id,
-    company: companyFromDomain(a.domain),
+    company: compName,
     domain: a.domain,
     website: a.finalUrl,
     ownerName: "",
@@ -86,8 +95,19 @@ export function buildLeadFromAudit(a: AuditResult, id: string): Lead {
     tags: ["scanned"],
     source: "Website Scanner",
     screenshotUrl: `https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(a.domain)}`,
-    logoUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(companyFromDomain(a.domain))}&backgroundType=gradientLinear`,
-    contacts: [],
+    logoUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(compName)}&backgroundType=gradientLinear`,
+    contacts: a.contacts ? a.contacts.map((c, idx) => ({
+      id: `ct_scan_${a.domain}_${idx}`,
+      fullName: c.fullName,
+      title: c.title,
+      role: c.role,
+      email: c.email,
+      emailStatus: c.emailStatus,
+      emailConfidence: c.emailConfidence,
+      phone: c.phone,
+      linkedin: c.linkedin,
+      isPrimary: c.isPrimary,
+    })) : [],
     websiteAudit: {
       sslValid: a.sslValid,
       perfScore: a.perfScore,
@@ -145,6 +165,9 @@ export const scannerRepository = {
       await prisma.lead.update({
         where: { id: existing.id },
         data: {
+          company: rebuilt.company,
+          website: rebuilt.website,
+          logoUrl: rebuilt.logoUrl,
           leadScore: rebuilt.leadScore,
           websiteScore: rebuilt.websiteScore,
           uiScore: rebuilt.uiScore,
