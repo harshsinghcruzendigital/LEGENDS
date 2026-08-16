@@ -6,7 +6,7 @@
  */
 import { Prisma } from "@prisma/client";
 import { hasDatabase, getPrisma } from "@/server/db";
-import { discoverLeads } from "@/lib/mock/leads";
+import { discoverLiveLeads } from "@/server/services/live-discovery";
 import { searchMarketplaceLeads } from "@/server/services/marketplace";
 import type { Lead, OpportunityType } from "@/lib/types";
 
@@ -123,20 +123,25 @@ export const discoveryRepository = {
     const seed = seedFromConfig(config);
     const count = Math.max(20, config.limit);
     
-    const hasMarketplace = config.sources.some(s => ["amazon", "etsy", "flipkart"].includes(s.toLowerCase()));
+    const hasMarketplace = config.sources.some((s) => ["amazon", "etsy", "flipkart"].includes(s.toLowerCase()));
     let generated: Lead[] = [];
-    
+
     if (hasMarketplace) {
       generated = await searchMarketplaceLeads(config.keywords || "default", config.sources, config.countries, count);
-    }
-    
-    if (generated.length === 0) {
-      generated = discoverLeads(count, seed, {
-        industries: config.industries,
-        countries: config.countries,
-        opportunities: config.opportunities,
-        sources: config.sources,
-      });
+    } else {
+      try {
+        generated = await discoverLiveLeads({
+          sources: config.sources,
+          industries: config.industries,
+          countries: config.countries,
+          opportunities: config.opportunities,
+          keywords: config.keywords,
+          minScore: config.minScore,
+          limit: config.limit,
+        });
+      } catch (err) {
+        console.error("Live discovery error:", err);
+      }
     }
 
     if (config.minScore > 0) generated = generated.filter((l) => l.leadScore >= config.minScore);
